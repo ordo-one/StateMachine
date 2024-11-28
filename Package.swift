@@ -1,4 +1,4 @@
-// swift-tools-version:5.9
+// swift-tools-version:5.10
 
 import PackageDescription
 import CompilerPluginSupport
@@ -19,7 +19,7 @@ let package = Package(
     dependencies: [
         .package(
             url: "https://github.com/apple/swift-syntax.git",
-            from: "509.1.0"),
+            from: "510.0.3"),
         .package(
             url: "https://github.com/Quick/Nimble.git",
             from: "13.2.0"),
