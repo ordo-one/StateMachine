@@ -27,39 +27,25 @@ let package = Package(
         .package(url: swiftSyntaxRepo, from: swiftSyntaxVersion),
         .package(url: "https://github.com/Quick/Nimble.git", from: "13.2.0"),
     ],
-    targets: {
-        var targets: [Target] = [
-            .target(
-                name: "StateMachine",
-                dependencies: ["StateMachineMacros"],
-                path: "Swift/Sources/StateMachine"),
-            .macro(
-                name: "StateMachineMacros",
-                dependencies: makeSwiftSyntaxTargetDependencies(),
-                path: "Swift/Sources/StateMachineMacros")
-        ]
-
-#if os(Linux)
-        targets.append(
-            .testTarget(
-                name: "StateMachineTests",
-                dependencies: {
-                    var deps: [Target.Dependency] = [
-                        "StateMachine",
-                        "StateMachineMacros",
-                        "Nimble"
-                    ]
-#if !os(macOS) && !os(iOS)
-                    deps.append(.product(name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax"))
-#endif
-                    return deps
-                }(),
-                path: "Swift/Tests/StateMachineTests")
-        )
-#endif
-
-        return targets
-    }()
+    targets: [
+        .target(
+            name: "StateMachine",
+            dependencies: ["StateMachineMacros"],
+            path: "Swift/Sources/StateMachine"),
+        .macro(
+            name: "StateMachineMacros",
+            dependencies: makeSwiftSyntaxTargetDependencies(),
+            path: "Swift/Sources/StateMachineMacros"),
+        .testTarget(
+            name: "StateMachineTests",
+            dependencies: [
+                "StateMachine",
+                "StateMachineMacros",
+                makeSwiftSyntaxTestDependencies(),
+                "Nimble",
+            ],
+            path: "Swift/Tests/StateMachineTests"),
+    ]
 )
 
 func makeSwiftSyntaxTargetDependencies() -> [PackageDescription.Target.Dependency] {
@@ -72,5 +58,13 @@ func makeSwiftSyntaxTargetDependencies() -> [PackageDescription.Target.Dependenc
         .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
         .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
     ]
+#endif
+}
+
+func makeSwiftSyntaxTestDependencies() -> PackageDescription.Target.Dependency {
+#if os(macOS) || os(iOS)
+    .product(name: "SwiftSyntaxWrapper", package: "swift-syntax-xcf")
+#else
+    .product(name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax")
 #endif
 }
