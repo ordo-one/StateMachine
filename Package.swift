@@ -3,9 +3,9 @@
 import PackageDescription
 import CompilerPluginSupport
 
-let swiftSyntaxVersion = Version("510.0.3")
+let swiftSyntaxVersion = Version("600.0.1")
 #if os(macOS) || os(iOS)
-let swiftSyntaxRepo = "https://github.com/ordo-one/swift-syntax-xcf"
+let swiftSyntaxRepo = "https://github.com/ordo-one/swift-syntax-xcframeworks"
 #else
 let swiftSyntaxRepo = "https://github.com/apple/swift-syntax"
 #endif
@@ -51,7 +51,7 @@ let package = Package(
 func makeSwiftSyntaxTargetDependencies() -> [PackageDescription.Target.Dependency] {
 #if os(macOS) || os(iOS)
     [
-        .product(name: "SwiftSyntaxWrapper", package: "swift-syntax-xcf")
+        .product(name: "SwiftSyntaxWrapper", package: "swift-syntax-xcframeworks")
     ]
 #else
     [
@@ -63,7 +63,7 @@ func makeSwiftSyntaxTargetDependencies() -> [PackageDescription.Target.Dependenc
 
 func makeSwiftSyntaxTestDependencies() -> PackageDescription.Target.Dependency {
 #if os(macOS) || os(iOS)
-    .product(name: "SwiftSyntaxWrapper", package: "swift-syntax-xcf")
+    .product(name: "SwiftSyntaxWrapper", package: "swift-syntax-xcframeworks")
 #else
     .product(name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax")
 #endif
