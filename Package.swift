@@ -3,12 +3,8 @@
 import PackageDescription
 import CompilerPluginSupport
 
-let swiftSyntaxVersion = Version("600.0.1")
-#if os(macOS) || os(iOS)
-let swiftSyntaxRepo = "https://github.com/ordo-one/swift-syntax-xcframeworks"
-#else
-let swiftSyntaxRepo = "https://github.com/apple/swift-syntax"
-#endif
+let swiftSyntaxVersion = Version("601.0.1")
+let swiftSyntaxRepo = "https://github.com/swiftlang/swift-syntax"
 
 let package = Package(
     name: "StateMachine",
@@ -49,22 +45,12 @@ let package = Package(
 )
 
 func makeSwiftSyntaxTargetDependencies() -> [PackageDescription.Target.Dependency] {
-#if os(macOS) || os(iOS)
-    [
-        .product(name: "SwiftSyntaxWrapper", package: "swift-syntax-xcframeworks")
-    ]
-#else
     [
         .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
         .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
     ]
-#endif
 }
 
 func makeSwiftSyntaxTestDependencies() -> PackageDescription.Target.Dependency {
-#if os(macOS) || os(iOS)
-    .product(name: "SwiftSyntaxWrapper", package: "swift-syntax-xcframeworks")
-#else
     .product(name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax")
-#endif
 }
