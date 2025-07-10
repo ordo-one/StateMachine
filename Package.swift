@@ -1,4 +1,4 @@
-// swift-tools-version:5.10
+// swift-tools-version:6.1
 
 import CompilerPluginSupport
 import class Foundation.ProcessInfo
@@ -56,10 +56,9 @@ func makeSwiftSyntaxTestDependencies() -> PackageDescription.Target.Dependency {
 let package = Package(
     name: "StateMachine",
     platforms: [
-        .macOS(.v10_15),
-        .iOS(.v13),
-        .tvOS(.v13),
-        .watchOS(.v5),
+        .macOS(.v15),
+        .iOS(.v18),
+        .visionOS(.v2)
     ],
     products: [
         .library(
