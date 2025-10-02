@@ -4,7 +4,7 @@ import CompilerPluginSupport
 import class Foundation.ProcessInfo
 import PackageDescription
 
-let swiftSyntaxVersion = Version("601.0.1")
+let swiftSyntaxVersion = Version("602.0.0")
 
 func useXcFrameworksSwiftSyntax() -> Bool {
     #if os(iOS)
