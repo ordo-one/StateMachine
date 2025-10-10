@@ -16,9 +16,6 @@ func useXcFrameworksSwiftSyntax() -> Bool {
             return false
         #else
             let useSwiftSyntaxXcf = (ProcessInfo.processInfo.environment["ORDO_USE_SWIFT_SYNTAX_XCF"] ?? "true") == "true"
-            if !useSwiftSyntaxXcf {
-                print("Make sure to pass build flag `--enable-experimental-prebuilts` to avoid building SwiftSyntax")
-            }
             return useSwiftSyntaxXcf
         #endif
     #endif
