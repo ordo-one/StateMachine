@@ -1,54 +1,7 @@
 // swift-tools-version:6.1
 
 import CompilerPluginSupport
-import class Foundation.ProcessInfo
 import PackageDescription
-
-let swiftSyntaxVersion = Version("602.0.0")
-
-func useXcFrameworksSwiftSyntax() -> Bool {
-    #if os(iOS)
-        return true
-    #else
-        #if swift(>=6.2)
-            return false
-        #elseif os(Linux)
-            return false
-        #else
-            let useSwiftSyntaxXcf = (ProcessInfo.processInfo.environment["ORDO_USE_SWIFT_SYNTAX_XCF"] ?? "true") == "true"
-            return useSwiftSyntaxXcf
-        #endif
-    #endif
-}
-
-func makeDependencies() -> [Package.Dependency] {
-    let xcFrameworksRepo = "https://github.com/ordo-one/swift-syntax-xcframeworks"
-    let officialSyntaxRepo = "https://github.com/swiftlang/swift-syntax"
-    let syntaxUrl = useXcFrameworksSwiftSyntax() ? xcFrameworksRepo : officialSyntaxRepo
-    return [
-        .package(url: syntaxUrl, exact: swiftSyntaxVersion),
-        .package(url: "https://github.com/Quick/Nimble.git", from: "13.2.0"),
-    ]
-}
-
-func makeSwiftSyntaxTargetDependencies() -> [PackageDescription.Target.Dependency] {
-    let xcFrameworkDependencies: [PackageDescription.Target.Dependency] = [
-        .product(name: "SwiftSyntaxWrapper", package: "swift-syntax-xcframeworks"),
-    ]
-    let officialSyntaxDependencies: [PackageDescription.Target.Dependency] = [
-        .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
-        .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
-    ]
-    return useXcFrameworksSwiftSyntax() ? xcFrameworkDependencies : officialSyntaxDependencies
-}
-
-func makeSwiftSyntaxTestDependencies() -> PackageDescription.Target.Dependency {
-    let xcFrameworkDependencies: PackageDescription.Target.Dependency =
-        .product(name: "SwiftSyntaxWrapper", package: "swift-syntax-xcframeworks")
-    let officialSyntaxDependencies: PackageDescription.Target.Dependency =
-        .product(name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax")
-    return useXcFrameworksSwiftSyntax() ? xcFrameworkDependencies : officialSyntaxDependencies
-}
 
 let package = Package(
     name: "StateMachine",
@@ -63,7 +16,10 @@ let package = Package(
             targets: ["StateMachine"]
         ),
     ],
-    dependencies: makeDependencies(),
+    dependencies: [
+        .package(url: "https://github.com/swiftlang/swift-syntax", from: "602.0.0"),
+        .package(url: "https://github.com/Quick/Nimble.git", from: "13.2.0"),
+    ],
     targets: [
         .target(
             name: "StateMachine",
@@ -72,7 +28,10 @@ let package = Package(
         ),
         .macro(
             name: "StateMachineMacros",
-            dependencies: makeSwiftSyntaxTargetDependencies(),
+            dependencies: [
+                .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
+                .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
+            ],
             path: "Swift/Sources/StateMachineMacros"
         ),
         .testTarget(
@@ -80,8 +39,8 @@ let package = Package(
             dependencies: [
                 "StateMachine",
                 "StateMachineMacros",
-                makeSwiftSyntaxTestDependencies(),
                 "Nimble",
+                .product(name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax"),
             ],
             path: "Swift/Tests/StateMachineTests"
         ),
