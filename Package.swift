@@ -1,4 +1,4 @@
-// swift-tools-version:6.1
+// swift-tools-version:6.3
 
 import CompilerPluginSupport
 import PackageDescription
@@ -6,9 +6,9 @@ import PackageDescription
 let package = Package(
     name: "StateMachine",
     platforms: [
-        .macOS(.v15),
-        .iOS(.v18),
-        .visionOS(.v2)
+        .macOS(.v26),
+        .iOS(.v26),
+        .visionOS(.v26)
     ],
     products: [
         .library(
@@ -17,7 +17,7 @@ let package = Package(
         ),
     ],
     dependencies: [
-        .package(url: "https://github.com/swiftlang/swift-syntax", from: "602.0.0"),
+        .package(url: "https://github.com/swiftlang/swift-syntax", from: "603.0.0"),
         .package(url: "https://github.com/Quick/Nimble.git", from: "13.2.0"),
     ],
     targets: [
