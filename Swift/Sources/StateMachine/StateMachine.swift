@@ -27,6 +27,32 @@ open class StateMachine<State: StateMachineHashable, Event: StateMachineHashable
         public struct Invalid: Error, Equatable {}
     }
 
+    /// Policy for events received in a state that does not declare a handler
+    /// for them. By default the machine treats unhandled (state, event) pairs
+    /// as programming errors and throws `Transition.Invalid`, which matches
+    /// the original library semantics and is correct for tightly-controlled
+    /// flows (UI, auth, video player state, etc.) where reaching an
+    /// undeclared transition means a bug.
+    ///
+    /// For consumers fed by asynchronous external event streams — for
+    /// example a server-side actor consuming order/cache updates that
+    /// genuinely can arrive after the state machine has transitioned past
+    /// the relevant phase — the `.absorb` case opts in to "unhandled event
+    /// is a no-op, not a fatal error". The transition completes as a
+    /// no-state-change with no side effect, the result is a success rather
+    /// than a failure, and the optional callback is invoked so the consumer
+    /// can log or otherwise observe the absorbed event.
+    public enum UnhandledEventPolicy {
+
+        /// Default. Unhandled (state, event) pairs throw `Transition.Invalid`.
+        case invalid
+
+        /// Unhandled (state, event) pairs are absorbed as a successful
+        /// no-op transition. The optional callback is invoked synchronously
+        /// before the result is observed; pass `nil` to absorb silently.
+        case absorb((_ state: State, _ event: Event) -> Void)
+    }
+
     public enum StateMachineError: Error {
 
         case recursionDetected
@@ -54,11 +80,15 @@ open class StateMachine<State: StateMachineHashable, Event: StateMachineHashable
     public private(set) var state: State
 
     private let states: States
+    private let unhandledEventPolicy: UnhandledEventPolicy
     private var observers: [Observer] = []
 
     private var isNotifying: Bool = false
 
-    public init(@DefinitionBuilder build: () -> Definition) {
+    public init(
+        unhandledEventPolicy: UnhandledEventPolicy = .invalid,
+        @DefinitionBuilder build: () -> Definition
+    ) {
         let definition: Definition = build()
         state = definition.initialState.state
         states = definition.states.reduce(into: States()) {
@@ -66,6 +96,7 @@ open class StateMachine<State: StateMachineHashable, Event: StateMachineHashable
                 $0[$1.event] = $1.action
             }
         }
+        self.unhandledEventPolicy = unhandledEventPolicy
         observers = definition.callbacks.map {
             Observer(object: self, callback: $0)
         }
@@ -111,7 +142,17 @@ open class StateMachine<State: StateMachineHashable, Event: StateMachineHashable
                 }
                 result = .success(transition)
             } else {
-                result = .failure(Transition.Invalid())
+                switch unhandledEventPolicy {
+                case .invalid:
+                    result = .failure(Transition.Invalid())
+                case .absorb(let callback):
+                    callback(state, event)
+                    let transition: Transition.Valid = .init(fromState: state,
+                                                             event: event,
+                                                             toState: state,
+                                                             sideEffect: nil)
+                    result = .success(transition)
+                }
             }
         } catch {
             result = .failure(error)

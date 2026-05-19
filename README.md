@@ -169,6 +169,30 @@ expect(transition).to(equal(
 expect(logger).to(log(Message.melted))
 ```
 
+#### Unhandled Event Policy (Swift)
+
+By default, an event received in a state that has no declared handler for it throws `Transition.Invalid` — the original semantics, intended for tightly-controlled flows (UI, auth, video player state, etc.) where reaching an undeclared transition signals a bug.
+
+Consumers fed by asynchronous external event streams (e.g. a server-side actor consuming order-cache updates that genuinely can arrive after the state machine has transitioned past the relevant phase) can opt in to an absorbing policy. Unhandled events become a successful no-op transition (no state change, no side effect); an optional callback observes them:
+
+```swift
+let stateMachine = StateMachine<State, Event, SideEffect>(
+    unhandledEventPolicy: .absorb { state, event in
+        logger.debug("StateMachine absorbed \(event) in \(state)")
+    }
+) {
+    initialState(.solid)
+    state(.solid) {
+        on(.melt) { transition(to: .liquid, emit: .logMelted) }
+    }
+    // ...
+}
+```
+
+`UnhandledEventPolicy` cases:
+- `.invalid` (default) — throw `Transition.Invalid` for unhandled (state, event) pairs.
+- `.absorb(_ callback:)` — synthesize a success transition with no state change and no side effect; invoke the callback before returning.
+
 #### Pre-Swift 5.9 Compatibility
 
 <details>

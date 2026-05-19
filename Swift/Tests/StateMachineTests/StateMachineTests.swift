@@ -101,6 +101,66 @@ final class StateMachineTests: XCTestCase, StateMachineBuilder {
         })
     }
 
+    static func absorbingStateMachine(
+        initialState _state: State,
+        onAbsorb: @escaping (State, Event) -> Void
+    ) -> TestStateMachine {
+        TestStateMachine(unhandledEventPolicy: .absorb(onAbsorb)) {
+            initialState(_state)
+            state(.stateOne) {
+                on(.eventOne) { dontTransition(emit: .commandOne) }
+                on(.eventTwo) { transition(to: .stateTwo, emit: .commandTwo) }
+            }
+            state(.stateTwo) {
+                on(.eventTwo) { dontTransition(emit: .commandThree) }
+            }
+        }
+    }
+
+    func testAbsorbedUnhandledTransition_succeedsWithNoStateChangeAndNoSideEffect() throws {
+
+        // Given — eventOne in stateTwo has no declared handler
+        var absorbedEvents: [(state: State, event: Event)] = []
+        let stateMachine: TestStateMachine = Self.absorbingStateMachine(
+            initialState: .stateTwo,
+            onAbsorb: { absorbedEvents.append(($0, $1)) }
+        )
+
+        // When
+        let transition: ValidTransition = try stateMachine.transition(.eventOne)
+
+        // Then — absorbed: state unchanged, no side effect, callback observed
+        expect(stateMachine.state).to(equal(.stateTwo))
+        expect(transition).to(equal(ValidTransition(fromState: .stateTwo,
+                                                    event: .eventOne,
+                                                    toState: .stateTwo,
+                                                    sideEffect: nil)))
+        expect(absorbedEvents.count).to(equal(1))
+        expect(absorbedEvents.first?.state).to(equal(.stateTwo))
+        expect(absorbedEvents.first?.event).to(equal(.eventOne))
+    }
+
+    func testAbsorbPolicy_doesNotAffectDeclaredTransitions() throws {
+
+        // Given — eventTwo in stateOne is declared
+        var absorbedEvents: [(state: State, event: Event)] = []
+        let stateMachine: TestStateMachine = Self.absorbingStateMachine(
+            initialState: .stateOne,
+            onAbsorb: { absorbedEvents.append(($0, $1)) }
+        )
+
+        // When
+        let transition: ValidTransition = try stateMachine.transition(.eventTwo)
+
+        // Then — normal transition fires; absorb callback is not invoked
+        expect(stateMachine.state).to(equal(.stateTwo))
+        expect(transition).to(equal(ValidTransition(fromState: .stateOne,
+                                                    event: .eventTwo,
+                                                    toState: .stateTwo,
+                                                    sideEffect: .commandTwo)))
+        expect(absorbedEvents).to(beEmpty())
+    }
+
     func testObservation() throws {
 
         var results: [Result<ValidTransition, InvalidTransition>] = []
