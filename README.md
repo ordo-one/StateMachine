@@ -169,6 +169,34 @@ expect(transition).to(equal(
 expect(logger).to(log(Message.melted))
 ```
 
+#### Unhandled Event Policy (Swift)
+
+By default, an event received in a state that has no declared handler for it throws `Transition.Invalid` — the original semantics, intended for tightly-controlled flows (UI, auth, video player state, etc.) where reaching an undeclared transition signals a bug.
+
+Consumers fed by asynchronous external event streams (e.g. a server-side actor consuming order-cache updates that genuinely can arrive after the state machine has transitioned past the relevant phase) can opt in to an absorbing policy. Unhandled events become a successful no-op transition (no state change, no side effect); an optional callback observes them:
+
+```swift
+let stateMachine = StateMachine<State, Event, SideEffect>(
+    unhandledEventPolicy: .absorb { state, event in
+        logger.debug("StateMachine absorbed \(event) in \(state)")
+    }
+) {
+    initialState(.solid)
+    state(.solid) {
+        on(.melt) { transition(to: .liquid, emit: .logMelted) }
+    }
+    // ...
+}
+```
+
+`UnhandledEventPolicy` cases:
+- `.invalid` (default) — throw `Transition.Invalid` for unhandled (state, event) pairs.
+- `.absorb(((State, Event) -> Void)?)` — synthesize a success transition with no state change and no side effect; invoke the optional callback before observers are notified. Pass `nil` to absorb silently.
+
+Two details worth knowing when opting in to `.absorb`:
+- It only applies to events missing from a *declared* state. An event received in a state the definition never declared at all (a typo'd or missing `state(...)` block) still throws `Transition.Invalid` — that is a misdeclared machine, not a late event.
+- Observers receive the absorbed transition as a regular success with `fromState == toState` and a `nil` side effect, indistinguishable from a declared `dontTransition()`. The callback is the mechanism for telling them apart; it runs before observers are notified.
+
 #### Pre-Swift 5.9 Compatibility
 
 <details>

@@ -71,3 +71,4 @@ Packages/
 # Xcode
 *.xcworkspace/
 *.xcodeproj/
+Package.resolved
