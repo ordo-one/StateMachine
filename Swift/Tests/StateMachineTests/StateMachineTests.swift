@@ -138,8 +138,15 @@ final class StateMachineTests: XCTestCase, StateMachineBuilder {
 
     func testAbsorbCallback_reentrantTransitionThrowsRecursionDetected() throws {
 
-        // Given — the absorb callback tries to dispatch a new event
+        // Given — the absorb callback tries to dispatch a new event.
+        // The closure must capture `stateMachine` by reference (it is
+        // still nil when the closure is created), which forms a cycle:
+        // machine → policy → closure → capture box → machine. Break it
+        // at test end by clearing the variable. A `[weak stateMachine]`
+        // capture list would NOT work here — it copies the current
+        // (nil) value at closure-creation time.
         var stateMachine: TestStateMachine!
+        defer { stateMachine = nil }
         var reentrantError: Error?
         stateMachine = Self.absorbingStateMachine(
             initialState: .stateTwo,

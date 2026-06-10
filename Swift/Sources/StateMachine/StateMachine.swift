@@ -159,8 +159,8 @@ open class StateMachine<State: StateMachineHashable, Event: StateMachineHashable
                         // throws recursionDetected instead of mutating state
                         // mid-transition.
                         isNotifying = true
+                        defer { isNotifying = false }
                         callback(state, event)
-                        isNotifying = false
                     }
                     let transition: Transition.Valid = .init(fromState: state,
                                                              event: event,
