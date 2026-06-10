@@ -11,7 +11,7 @@ final class StateMachineTests: XCTestCase, StateMachineBuilder {
 
     enum State: StateMachineHashable {
 
-        case stateOne, stateTwo
+        case stateOne, stateTwo, stateUndeclared
     }
 
     enum Event: StateMachineHashable {
@@ -172,6 +172,58 @@ final class StateMachineTests: XCTestCase, StateMachineBuilder {
             machine = nil // breaks the cycle
         }
         expect(weakMachine).to(beNil())
+    }
+
+    func testAbsorbPolicy_undeclaredStateStillThrowsInvalid() throws {
+
+        // Given — the machine is in a state the definition never declared.
+        // That is a misdeclared machine (typo'd or missing `state(...)`
+        // block), not a late event for a known phase — absorb must NOT
+        // swallow it.
+        var absorbedEvents: [(state: State, event: Event)] = []
+        let stateMachine: TestStateMachine = Self.absorbingStateMachine(
+            initialState: .stateUndeclared,
+            onAbsorb: { absorbedEvents.append(($0, $1)) }
+        )
+
+        // When
+        let transition: () throws -> ValidTransition = {
+            try stateMachine.transition(.eventOne)
+        }
+
+        // Then — Invalid is thrown despite the absorb policy
+        expect(transition).to(throwError { error in
+            expect(error).to(beAKindOf(InvalidTransition.self))
+        })
+        expect(absorbedEvents).to(beEmpty())
+    }
+
+    func testAbsorbedTransition_isDeliveredToObservers_afterAbsorbCallback() throws {
+
+        // Given — an observer plus an absorb callback, with an order log
+        var sequence: [String] = []
+        let stateMachine: TestStateMachine = Self.absorbingStateMachine(
+            initialState: .stateTwo,
+            onAbsorb: { _, _ in sequence.append("absorbCallback") }
+        )
+        var observed: [Result<ValidTransition, InvalidTransition>] = []
+        stateMachine.startObserving(self) {
+            sequence.append("observer")
+            observed.append($0.mapError { $0 as! InvalidTransition })
+        }
+
+        // When — eventOne is unhandled in (declared) stateTwo
+        _ = try stateMachine.transition(.eventOne)
+
+        // Then — the observer received the absorbed no-op as a success,
+        // and the absorb callback ran before observers were notified
+        expect(observed).to(equal([
+            .success(ValidTransition(fromState: .stateTwo,
+                                     event: .eventOne,
+                                     toState: .stateTwo,
+                                     sideEffect: nil))
+        ]))
+        expect(sequence).to(equal(["absorbCallback", "observer"]))
     }
 
     func testAbsorbCallback_reentrantTransitionThrowsRecursionDetected() throws {

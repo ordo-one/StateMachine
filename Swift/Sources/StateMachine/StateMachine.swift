@@ -51,6 +51,11 @@ open class StateMachine<State: StateMachineHashable, Event: StateMachineHashable
         /// no-op transition. The optional callback is invoked synchronously
         /// before the result is observed; pass `nil` to absorb silently.
         ///
+        /// Absorption only applies to events missing from a *declared*
+        /// state. An event received in a state the definition never
+        /// declared at all still throws `Transition.Invalid` under either
+        /// policy — that is a misdeclared machine, not a late event.
+        ///
         /// Observers see the absorbed transition as a regular success with
         /// `fromState == toState` and a `nil` side effect — indistinguishable
         /// from a declared `dontTransition()`. Use this callback when the
@@ -138,7 +143,8 @@ open class StateMachine<State: StateMachineHashable, Event: StateMachineHashable
         do {
             let stateIdentifier: State.HashableIdentifier = state.hashableIdentifier
             let eventIdentifier: Event.HashableIdentifier = event.hashableIdentifier
-            let factory: Action.Factory? = states[stateIdentifier]?[eventIdentifier]
+            let declaredEvents: Events? = states[stateIdentifier]
+            let factory: Action.Factory? = declaredEvents?[eventIdentifier]
             if let action: Action = try factory?(state, event) {
                 let transition: Transition.Valid = .init(fromState: state,
                                                          event: event,
@@ -148,6 +154,14 @@ open class StateMachine<State: StateMachineHashable, Event: StateMachineHashable
                     state = toState
                 }
                 result = .success(transition)
+            } else if declaredEvents == nil {
+                // The *state* itself was never declared in the definition.
+                // That is a programming error (typo'd or missing `state(...)`
+                // block), not a late event for a known phase — always throw,
+                // regardless of policy. Absorbing here would turn a
+                // misdeclared machine into one that reports success while
+                // permanently ignoring everything.
+                result = .failure(Transition.Invalid())
             } else {
                 switch unhandledEventPolicy {
                 case .invalid:

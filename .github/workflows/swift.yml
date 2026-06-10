@@ -29,6 +29,10 @@ jobs:
     name: Swift (Linux)
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # ubuntu-latest images no longer ship a Swift toolchain; run in the
+    # official Swift container instead. The swift-tools-version:6.3
+    # manifest falls back to Package@swift-5.9.swift on older toolchains.
+    container: swift:6.1
     steps:
     - name: Checkout source
       uses: actions/checkout@v6

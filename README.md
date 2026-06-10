@@ -191,7 +191,11 @@ let stateMachine = StateMachine<State, Event, SideEffect>(
 
 `UnhandledEventPolicy` cases:
 - `.invalid` (default) — throw `Transition.Invalid` for unhandled (state, event) pairs.
-- `.absorb(_ callback:)` — synthesize a success transition with no state change and no side effect; invoke the callback before returning.
+- `.absorb(((State, Event) -> Void)?)` — synthesize a success transition with no state change and no side effect; invoke the optional callback before observers are notified. Pass `nil` to absorb silently.
+
+Two details worth knowing when opting in to `.absorb`:
+- It only applies to events missing from a *declared* state. An event received in a state the definition never declared at all (a typo'd or missing `state(...)` block) still throws `Transition.Invalid` — that is a misdeclared machine, not a late event.
+- Observers receive the absorbed transition as a regular success with `fromState == toState` and a `nil` side effect, indistinguishable from a declared `dontTransition()`. The callback is the mechanism for telling them apart; it runs before observers are notified.
 
 #### Pre-Swift 5.9 Compatibility
 
