@@ -136,6 +136,44 @@ final class StateMachineTests: XCTestCase, StateMachineBuilder {
                                                     sideEffect: nil)))
     }
 
+    func testMachineRemainsUsable_afterAbsorbedEventWithCallback() throws {
+
+        // Given — an absorbed event whose callback has run (exercises the
+        // isNotifying guard around the callback being released afterwards)
+        let stateMachine: TestStateMachine = Self.absorbingStateMachine(
+            initialState: .stateTwo,
+            onAbsorb: { _, _ in }
+        )
+        _ = try stateMachine.transition(.eventOne) // absorbed
+
+        // When — a declared transition follows
+        let transition: ValidTransition = try stateMachine.transition(.eventTwo)
+
+        // Then — the machine was not left stuck in the notifying guard
+        expect(transition.sideEffect).to(equal(.commandThree))
+    }
+
+    func testAbsorbCallbackCapturingMachine_isReleasedOnceReferenceCleared() {
+
+        // A callback that captures its own machine by reference forms a
+        // cycle (machine → policy → closure → capture box → machine).
+        // Verify the machine deallocates once the captured reference is
+        // cleared — without the `machine = nil`, the weak reference
+        // below stays non-nil and this test fails.
+        weak var weakMachine: TestStateMachine?
+        do {
+            var machine: TestStateMachine!
+            machine = Self.absorbingStateMachine(
+                initialState: .stateTwo,
+                onAbsorb: { _, _ in _ = machine.state }
+            )
+            weakMachine = machine
+            expect(weakMachine).toNot(beNil())
+            machine = nil // breaks the cycle
+        }
+        expect(weakMachine).to(beNil())
+    }
+
     func testAbsorbCallback_reentrantTransitionThrowsRecursionDetected() throws {
 
         // Given — the absorb callback tries to dispatch a new event.
