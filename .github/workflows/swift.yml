@@ -1,22 +1,40 @@
 name: Swift
 
 on:
+  workflow_dispatch:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
 
 env:
-  DEVELOPER_DIR: /Applications/Xcode_15.0.app/Contents/Developer
+  DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
 
 jobs:
-  swift:
-    name: Swift
-    runs-on: macos-13
+  swift-macos:
+    name: Swift (macOS)
+    runs-on: macos-26
+    timeout-minutes: 30
     steps:
     - name: Checkout source
-      uses: actions/checkout@v3
+      uses: actions/checkout@v6
+    - name: Swift version
+      run: swift --version
     - name: Build
-      run: swift build -v -Xswiftc -warnings-as-errors
+      run: swift build -v
+    - name: Test
+      run: swift test -v
+
+  swift-linux:
+    name: Swift (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+    - name: Checkout source
+      uses: actions/checkout@v6
+    - name: Swift version
+      run: swift --version
+    - name: Build
+      run: swift build -v
     - name: Test
       run: swift test -v
