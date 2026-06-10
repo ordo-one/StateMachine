@@ -103,7 +103,7 @@ final class StateMachineTests: XCTestCase, StateMachineBuilder {
 
     static func absorbingStateMachine(
         initialState _state: State,
-        onAbsorb: @escaping (State, Event) -> Void
+        onAbsorb: ((State, Event) -> Void)?
     ) -> TestStateMachine {
         TestStateMachine(unhandledEventPolicy: .absorb(onAbsorb)) {
             initialState(_state)
@@ -115,6 +115,49 @@ final class StateMachineTests: XCTestCase, StateMachineBuilder {
                 on(.eventTwo) { dontTransition(emit: .commandThree) }
             }
         }
+    }
+
+    func testAbsorbWithNilCallback_succeedsSilently() throws {
+
+        // Given — eventOne in stateTwo has no declared handler, no callback
+        let stateMachine: TestStateMachine = Self.absorbingStateMachine(
+            initialState: .stateTwo,
+            onAbsorb: nil
+        )
+
+        // When
+        let transition: ValidTransition = try stateMachine.transition(.eventOne)
+
+        // Then — absorbed silently: state unchanged, no side effect
+        expect(stateMachine.state).to(equal(.stateTwo))
+        expect(transition).to(equal(ValidTransition(fromState: .stateTwo,
+                                                    event: .eventOne,
+                                                    toState: .stateTwo,
+                                                    sideEffect: nil)))
+    }
+
+    func testAbsorbCallback_reentrantTransitionThrowsRecursionDetected() throws {
+
+        // Given — the absorb callback tries to dispatch a new event
+        var stateMachine: TestStateMachine!
+        var reentrantError: Error?
+        stateMachine = Self.absorbingStateMachine(
+            initialState: .stateTwo,
+            onAbsorb: { _, _ in
+                do {
+                    try stateMachine.transition(.eventTwo)
+                } catch {
+                    reentrantError = error
+                }
+            }
+        )
+
+        // When — eventOne is unhandled in stateTwo, triggering the callback
+        _ = try stateMachine.transition(.eventOne)
+
+        // Then — the re-entrant dispatch threw instead of mutating state
+        expect(reentrantError).to(matchError(TestStateMachine.StateMachineError.recursionDetected))
+        expect(stateMachine.state).to(equal(.stateTwo))
     }
 
     func testAbsorbedUnhandledTransition_succeedsWithNoStateChangeAndNoSideEffect() throws {

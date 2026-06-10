@@ -50,6 +50,13 @@ open class StateMachine<State: StateMachineHashable, Event: StateMachineHashable
         /// Unhandled (state, event) pairs are absorbed as a successful
         /// no-op transition. The optional callback is invoked synchronously
         /// before the result is observed; pass `nil` to absorb silently.
+        ///
+        /// Observers see the absorbed transition as a regular success with
+        /// `fromState == toState` and a `nil` side effect — indistinguishable
+        /// from a declared `dontTransition()`. Use this callback when the
+        /// distinction matters. Dispatching a new event from within the
+        /// callback throws `StateMachineError.recursionDetected`, same as
+        /// from an observer callback.
         case absorb(((_ state: State, _ event: Event) -> Void)?)
     }
 
@@ -146,7 +153,15 @@ open class StateMachine<State: StateMachineHashable, Event: StateMachineHashable
                 case .invalid:
                     result = .failure(Transition.Invalid())
                 case .absorb(let callback):
-                    callback?(state, event)
+                    if let callback {
+                        // Same re-entrancy protection observer callbacks get:
+                        // dispatching a new event from inside the callback
+                        // throws recursionDetected instead of mutating state
+                        // mid-transition.
+                        isNotifying = true
+                        callback(state, event)
+                        isNotifying = false
+                    }
                     let transition: Transition.Valid = .init(fromState: state,
                                                              event: event,
                                                              toState: state,
