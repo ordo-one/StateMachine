@@ -50,7 +50,7 @@ open class StateMachine<State: StateMachineHashable, Event: StateMachineHashable
         /// Unhandled (state, event) pairs are absorbed as a successful
         /// no-op transition. The optional callback is invoked synchronously
         /// before the result is observed; pass `nil` to absorb silently.
-        case absorb((_ state: State, _ event: Event) -> Void)
+        case absorb(((_ state: State, _ event: Event) -> Void)?)
     }
 
     public enum StateMachineError: Error {
@@ -146,7 +146,7 @@ open class StateMachine<State: StateMachineHashable, Event: StateMachineHashable
                 case .invalid:
                     result = .failure(Transition.Invalid())
                 case .absorb(let callback):
-                    callback(state, event)
+                    callback?(state, event)
                     let transition: Transition.Valid = .init(fromState: state,
                                                              event: event,
                                                              toState: state,
